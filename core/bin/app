@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# '$@' is all of the parameters passed to the script.
+
+set -e
+QUOTEDCMD=()
+for token in "$@"; do
+  QUOTEDCMD+=($(printf "%q" "$token"))
+done
+CMD="${QUOTEDCMD[*]}"
+if [[ -z "$CMD" ]]
+then
+  CMD="bash"
+fi
+
+if [[ -t 1 ]] ; then OPTS=""; else OPTS="-T"; fi
+
+
+docker-compose -f ./core/docker-compose.yml exec ${OPTS} app \
+    /bin/bash -c "${CMD}"

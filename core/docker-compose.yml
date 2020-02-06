@@ -1,0 +1,19 @@
+version: '3.4'
+
+services:
+  app:
+    build: ./app
+    entrypoint: sh -c 'while sleep 3600; do :; done'
+    working_dir: /usr/src/app
+    volumes:
+      - "../source/:/usr/src/app"
+      # - "/etc/passwd:/etc/passwd:ro"
+      # - "/etc/shadow:/etc/shadow:ro"
+      # - "/etc/sudoers.d:/etc/sudoers.d:ro"
+      # - "/tmp/.X11-unix:/tmp/.X11-unix:rw"
+    ports:
+      - "$PORT"
+    environment:
+      - DNSDOCK_ALIAS=$DNSDOCK_ALIAS
+      - VIRTUAL_PORT=$PORT
+      - VIRTUAL_HOST=$DNSDOCK_ALIAS

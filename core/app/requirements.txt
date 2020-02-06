@@ -1,0 +1,8 @@
+Cython
+IPython
+numpy
+pandas
+sklearn
+matplotlib
+tensorflow==1.15
+nltk
