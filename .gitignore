@@ -1,3 +1,8 @@
+# -------------- folders
+
 **/__pycache__
+**/.vscode
+
+# -------------- files
 
 *.tfrecords

@@ -55,10 +55,12 @@ class DNN_Wrapper:
         except ValueError as err:
             print(err) 
     
-    def predict(self):
-        validation_predictions = list(self.classifier.predict(input_fn=lambda: _input_fn_not_tfr([tfrecord_test_path])))
-        print("sdasd")
-        return np.array([item['probabilities'] for item in validation_predictions]) # dovrei tornare il valore piu alto ??
+    def predict(self, dataframe = None):
+        print("predicting:\n", dataframe)
+        _write_tfrecord("records/predict.tfrecords", dataframe)
+        function = lambda: _train_input(["records/predict.tfrecords"],1)
+        validation_predictions = list(self.classifier.predict(input_fn = function))
+        return np.array([item['probabilities'][1] for item in validation_predictions]) # dovrei tornare il valore piu alto ??
         
 
 def _parse_function(record):
@@ -82,14 +84,27 @@ def _parse_function(record):
 
     terms = parsed_features['text'].values
     labels = parsed_features['spam']
+    
 
     return {'text': terms}, labels
 
 
+
+# decorators (is it worth?)
 # Create an input_fn that parses the tf.Examples from the given files,
 # and split them into features and targets.
-def _input_fn(input_filenames, num_epochs=None, shuffle=True):
+def _input_fn(func):
+    def _func_specific(*args):
+        # Return the next batch of data.
+        ds = func(*args)
 
+        features, labels = ds.make_one_shot_iterator().get_next()
+        
+        return features, labels
+    return _func_specific
+    
+@_input_fn
+def _train_input(input_filenames, num_epochs=None, batch_size=1, shuffle=True):
     # Same code as above; create a dataset and map features and labels.
     ds = tf.data.TFRecordDataset(input_filenames)
     ds = ds.map(_parse_function)
@@ -99,44 +114,13 @@ def _input_fn(input_filenames, num_epochs=None, shuffle=True):
 
     # Our feature data is variable-length, so we pad and batch
     # each field of the dataset structure to whatever size is necessary.
-    ds = ds.padded_batch(1, ds.output_shapes)
+    ds = ds.padded_batch(batch_size, ds.output_shapes)
 
     ds = ds.repeat(num_epochs)
 
-    # Return the next batch of data.
-    features, labels = ds.make_one_shot_iterator().get_next()
+    return ds
 
-    sess = tf.compat.v1.Session()
-    print(sess.run(features))
-    sess.close()
-
-    return features, labels
-
-
-# TODO
-def _input_fn_not_tfr(input_filenames, num_epochs=1, shuffle=True):
-
-    # Same code as above; create a dataset and map features and labels.
-    ds = tf.data.TFRecordDataset(input_filenames)
-    ds = ds.map(_parse_function)
-
-    if shuffle:
-        ds = ds.shuffle(10000)
-
-    # Our feature data is variable-length, so we pad and batch
-    # each field of the dataset structure to whatever size is necessary.
-    ds = ds.padded_batch(1, ds.output_shapes)
-
-    ds = ds.repeat(num_epochs)
-
-    # Return the next batch of data.
-    features, labels = ds.make_one_shot_iterator().get_next()
-
-    sess = tf.compat.v1.Session()
-    print(sess.run(features))
-    sess.close()
-
-    return features
+# ---------------
 
 
 def _get_stemmed_from_dataframe(dataframe :pd.DataFrame) -> set:
@@ -175,31 +159,34 @@ if __name__ == "__main__":
     excess_words.add("_")
 
     csv_dataframe = pd.read_csv("email.csv")
+
     
     vocabulary = _get_stemmed_from_dataframe(csv_dataframe)
 
 
-    tfrecord_training_path = "training.tfrecords"
-    tfrecord_test_path = "test.tfrecords"
+    tfrecord_training_path = "records/training.tfrecords"
+    tfrecord_test_path = "records/test.tfrecords"
 
     csv_dataframe = csv_dataframe.reindex(
         np.random.permutation(csv_dataframe.index)
         )
 
+    print(csv_dataframe)
+
     _write_tfrecord(path = tfrecord_training_path, data_frame = csv_dataframe.head(1200))
-    _write_tfrecord(path = tfrecord_test_path, data_frame = csv_dataframe.head(1))
+    _write_tfrecord(path = tfrecord_test_path, data_frame = csv_dataframe.tail(500))
 
     ##################### DNN ###############################
     dnn = DNN_Wrapper([20,20])                                                                           
 
     
     dnn.train(
-        input_function=lambda: _input_fn([tfrecord_training_path]),
+        input_function=lambda: _train_input([tfrecord_training_path]),
         steps = 100
         )
 
     evaluation_metrics = dnn.evaluate(
-        input_function=lambda: _input_fn([tfrecord_training_path]),
+        input_function=lambda: _train_input([tfrecord_training_path]),
         steps=1)
 
     print("Training set metrics:")
@@ -208,19 +195,19 @@ if __name__ == "__main__":
     print("---")
 
     evaluation_metrics = dnn.evaluate(
-        input_function=lambda: _input_fn([tfrecord_test_path]),
+        input_function=lambda: _train_input([tfrecord_test_path]),
         steps=1)
 
     print("Test set metrics:")
     for m in evaluation_metrics:
         print(m, evaluation_metrics[m])
     print("---")
+
+    idx = int(input("inserisci entry da predirre"))
     
-    # dont do nothing 
-    #try:
-    
-    for i in dnn.predict():
-        print(i)
-    #except ValueError as err:
-    #    print(err) 
+    for i in dnn.predict(dataframe = csv_dataframe.loc[[x for x in range(idx, idx+2)]]):
+        if i <= 1: 
+            print(i)
+        else:
+            raise ValueError("prediction over the range [0,1]")
     
