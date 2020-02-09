@@ -122,7 +122,6 @@ def _train_input(input_filenames, num_epochs=None, batch_size=1, shuffle=True):
 
 # ---------------
 
-
 def _get_stemmed_from_dataframe(dataframe :pd.DataFrame) -> set:
     vocabulary = set()
 
@@ -168,8 +167,8 @@ if __name__ == "__main__":
     tfrecord_test_path = "records/test.tfrecords"
 
     csv_dataframe = csv_dataframe.reindex(
-        np.random.permutation(csv_dataframe.index)
-        )
+       np.random.permutation(csv_dataframe.index)
+       )
 
     print(csv_dataframe)
 

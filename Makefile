@@ -27,4 +27,9 @@ stop:
 	docker-compose stop
 
 app:
-	@echo "implement the starter for your application structure\n-> put the application in the source directory"
+	@echo "executing the main script into app service..."
+	docker-compose exec app python3 spammer.py
+
+shell:
+	@echo "opening shell into app service...\n\n\n ---- type 'exit' to quit ---- \n\n"
+	docker-compose exec app /bin/bash
